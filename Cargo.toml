@@ -1,0 +1,47 @@
+[package]
+name = "threat-intel"
+version = "0.1.0"
+edition = "2021"
+authors = ["Red Asgard <hello@redasgard.com>"]
+license = "MIT"
+description = "Comprehensive threat intelligence framework with multi-source aggregation, CVE integration, and risk assessment"
+repository = "https://github.com/redasgard/threat-intel"
+keywords = ["security", "threat-intelligence", "cve", "vulnerability", "osint"]
+categories = ["security", "api-bindings", "database"]
+readme = "README.md"
+
+[dependencies]
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async traits
+async-trait = "0.1"
+
+# Optional features
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = []
+tracing = ["dep:tracing"]
+
+[lib]
+name = "threat_intel"
+path = "src/lib.rs"
+

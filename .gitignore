@@ -1,0 +1,33 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+*.profraw
+*.profdata
+
+# Coverage
+*.lcov
+coverage/
+tarpaulin-report.html
+cobertura.xml
+
+# Documentation build
+/doc/
+
+# Backup files
+*.bak
+*.tmp
+
