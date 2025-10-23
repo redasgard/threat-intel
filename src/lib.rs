@@ -36,19 +36,22 @@
 //! # }
 //! ```
 
+pub mod assessment;
 pub mod config;
-pub mod sources;
+pub mod constants;
 pub mod feeds;
-pub mod error;
+pub mod sources;
+pub mod types;
 
+pub use assessment::*;
 pub use config::*;
-pub use sources::*;
+pub use constants::*;
 pub use feeds::*;
-pub use error::ThreatIntelError;
+pub use sources::*;
+pub use types::*;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // Optional tracing support
@@ -217,34 +220,7 @@ impl ThreatIntelEngine {
 
     /// Assess risk for a given context
     pub fn assess_risk(&self, vulnerabilities: &[Vulnerability]) -> RiskAssessment {
-        let critical_count = vulnerabilities.iter().filter(|v| v.severity == Severity::Critical).count();
-        let high_count = vulnerabilities.iter().filter(|v| v.severity == Severity::High).count();
-        let medium_count = vulnerabilities.iter().filter(|v| v.severity == Severity::Medium).count();
-        let low_count = vulnerabilities.iter().filter(|v| v.severity == Severity::Low).count();
-
-        let score = (critical_count * 10 + high_count * 7 + medium_count * 4 + low_count * 1) as f32;
-
-        let level = if critical_count > 0 {
-            RiskLevel::Critical
-        } else if high_count >= 3 {
-            RiskLevel::High
-        } else if high_count > 0 || medium_count >= 5 {
-            RiskLevel::Medium
-        } else if medium_count > 0 || low_count > 0 {
-            RiskLevel::Low
-        } else {
-            RiskLevel::Info
-        };
-
-        RiskAssessment {
-            level,
-            score,
-            critical_count,
-            high_count,
-            medium_count,
-            low_count,
-            recommendations: generate_recommendations(&level, vulnerabilities),
-        }
+        assessment::assess_risk(vulnerabilities)
     }
 
     /// Get statistics about cached intelligence
@@ -287,106 +263,6 @@ impl ThreatIntelEngine {
     }
 }
 
-/// Vulnerability information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Vulnerability {
-    pub id: String,
-    pub cve_id: Option<String>,
-    pub title: String,
-    pub description: String,
-    pub severity: Severity,
-    pub cvss_score: Option<f32>,
-    pub affected_products: Vec<AffectedProduct>,
-    pub published_date: DateTime<Utc>,
-    pub last_modified: DateTime<Utc>,
-    pub references: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum Severity {
-    Critical,
-    High,
-    Medium,
-    Low,
-    Info,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AffectedProduct {
-    pub vendor: String,
-    pub product: String,
-    pub version: String,
-    pub platform: Option<String>,
-}
-
-/// Indicator of Compromise
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IOC {
-    pub id: String,
-    pub ioc_type: IOCType,
-    pub value: String,
-    pub description: Option<String>,
-    pub confidence: f32,
-    pub first_seen: DateTime<Utc>,
-    pub last_seen: DateTime<Utc>,
-    pub tags: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum IOCType {
-    IpAddress,
-    Domain,
-    Url,
-    FileHash,
-    Email,
-    Other(String),
-}
-
-/// Threat Actor information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThreatActor {
-    pub id: String,
-    pub name: String,
-    pub aliases: Vec<String>,
-    pub description: String,
-    pub tactics: Vec<String>,
-    pub techniques: Vec<String>,
-    pub first_seen: Option<DateTime<Utc>>,
-    pub country: Option<String>,
-    pub motivation: Option<String>,
-}
-
-/// Risk assessment result
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RiskAssessment {
-    pub level: RiskLevel,
-    pub score: f32,
-    pub critical_count: usize,
-    pub high_count: usize,
-    pub medium_count: usize,
-    pub low_count: usize,
-    pub recommendations: Vec<String>,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub enum RiskLevel {
-    Critical,
-    High,
-    Medium,
-    Low,
-    Info,
-}
-
-/// Statistics about the threat intelligence cache
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThreatIntelStats {
-    pub sources_count: usize,
-    pub total_vulnerabilities: usize,
-    pub total_iocs: usize,
-    pub total_threat_actors: usize,
-    pub last_sync: Option<DateTime<Utc>>,
-}
-
 // Internal cache for threat intelligence data
 struct ThreatCache {
     cache: HashMap<String, ThreatData>,
@@ -407,114 +283,3 @@ impl ThreatCache {
         self.cache.get(source_id)
     }
 }
-
-/// Data returned from a threat intelligence source
-#[derive(Debug, Clone, Default)]
-pub struct ThreatData {
-    pub vulnerabilities: Vec<Vulnerability>,
-    pub iocs: Vec<IOC>,
-    pub threat_actors: Vec<ThreatActor>,
-    pub raw_data: Option<serde_json::Value>,
-}
-
-// Helper function to generate recommendations
-fn generate_recommendations(level: &RiskLevel, vulns: &[Vulnerability]) -> Vec<String> {
-    let mut recommendations = Vec::new();
-
-    match level {
-        RiskLevel::Critical => {
-            recommendations.push("URGENT: Critical vulnerabilities detected. Patch immediately.".to_string());
-            recommendations.push("Consider taking affected systems offline until patched.".to_string());
-        }
-        RiskLevel::High => {
-            recommendations.push("High-priority vulnerabilities found. Patch within 24-48 hours.".to_string());
-            recommendations.push("Implement compensating controls if immediate patching isn't possible.".to_string());
-        }
-        RiskLevel::Medium => {
-            recommendations.push("Medium-severity issues detected. Schedule patching within 1 week.".to_string());
-        }
-        RiskLevel::Low => {
-            recommendations.push("Low-severity issues found. Include in next regular maintenance.".to_string());
-        }
-        RiskLevel::Info => {
-            recommendations.push("No significant security issues detected.".to_string());
-        }
-    }
-
-    // Add specific CVE recommendations if available
-    for vuln in vulns.iter().take(3) {
-        if let Some(cve) = &vuln.cve_id {
-            recommendations.push(format!("Review and remediate: {} - {}", cve, vuln.title));
-        }
-    }
-
-    recommendations
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_risk_assessment_critical() {
-        let vulns = vec![
-            Vulnerability {
-                id: "V-001".to_string(),
-                cve_id: Some("CVE-2024-0001".to_string()),
-                title: "Critical RCE".to_string(),
-                description: "Remote code execution".to_string(),
-                severity: Severity::Critical,
-                cvss_score: Some(9.8),
-                affected_products: vec![],
-                published_date: Utc::now(),
-                last_modified: Utc::now(),
-                references: vec![],
-            },
-        ];
-
-        let config = ThreatIntelConfig::default();
-        let engine = ThreatIntelEngine::new(config);
-        let assessment = engine.assess_risk(&vulns);
-
-        assert_eq!(assessment.level, RiskLevel::Critical);
-        assert_eq!(assessment.critical_count, 1);
-        assert!(assessment.score > 0.0);
-        assert!(!assessment.recommendations.is_empty());
-    }
-
-    #[test]
-    fn test_risk_assessment_low() {
-        let vulns = vec![
-            Vulnerability {
-                id: "V-002".to_string(),
-                cve_id: Some("CVE-2024-0002".to_string()),
-                title: "Info disclosure".to_string(),
-                description: "Minor information leak".to_string(),
-                severity: Severity::Low,
-                cvss_score: Some(3.1),
-                affected_products: vec![],
-                published_date: Utc::now(),
-                last_modified: Utc::now(),
-                references: vec![],
-            },
-        ];
-
-        let config = ThreatIntelConfig::default();
-        let engine = ThreatIntelEngine::new(config);
-        let assessment = engine.assess_risk(&vulns);
-
-        assert_eq!(assessment.level, RiskLevel::Low);
-        assert_eq!(assessment.low_count, 1);
-    }
-
-    #[test]
-    fn test_engine_creation() {
-        let config = ThreatIntelConfig::default();
-        let engine = ThreatIntelEngine::new(config);
-
-        let stats = engine.get_stats();
-        assert_eq!(stats.sources_count, 0); // Not initialized yet
-        assert_eq!(stats.total_vulnerabilities, 0);
-    }
-}
-
