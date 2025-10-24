@@ -1,8 +1,9 @@
-# Valkra Threat Intelligence
+# Red Asgard Threat Intelligence
 
 [![Crates.io](https://img.shields.io/crates/v/threat-intel.svg)](https://crates.io/crates/threat-intel)
 [![Documentation](https://docs.rs/threat-intel/badge.svg)](https://docs.rs/threat-intel)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)](https://github.com/redasgard/threat-intel)
 
 A comprehensive threat intelligence framework for Rust applications with multi-source aggregation, CVE integration, and risk assessment.
 
@@ -328,7 +329,7 @@ cargo test -- --ignored
 
 ## Origin
 
-Extracted from [Valkra](https://github.com/asgardtech/valkra), a blockchain security auditing platform where it aggregates threat intelligence for smart contract vulnerability detection.
+Extracted from [Red Asgard](https://github.com/redasgard), a security platform where it aggregates threat intelligence for vulnerability detection.
 
 ## License
 

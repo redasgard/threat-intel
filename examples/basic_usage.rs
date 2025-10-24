@@ -7,7 +7,7 @@ use threat_intel::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("=== Valkra Threat Intelligence Example ===\n");
+    println!("=== Red Asgard Threat Intelligence Example ===\n");
 
     // Example 1: Using default configuration
     println!("1. Default Configuration");

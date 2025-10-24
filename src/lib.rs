@@ -1,4 +1,4 @@
-//! # Valkra Threat Intelligence
+//! # Red Asgard Threat Intelligence
 //!
 //! A comprehensive threat intelligence framework for Rust applications with multi-source
 //! aggregation, CVE integration, and risk assessment.
